@@ -1,0 +1,8 @@
+{
+  "name": "span/szamlazz",
+  "autoload": {
+    "psr-0": {
+      "Szamlazz\\Szamlazz": "src"
+    }
+  }
+}
