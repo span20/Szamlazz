@@ -1,8 +1,8 @@
 {
   "name": "span/szamlazz",
   "autoload": {
-    "psr-0": {
-      "Span\\Szamlazz": "/src"
+    "psr-4": {
+      "Span\\Szamlazz\\": "src"
     }
   }
 }
