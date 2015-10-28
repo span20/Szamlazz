@@ -17,11 +17,15 @@ class Szamlazz {
     protected $KEYPASSWORD = '';
     private $eszamla;
     private $download;
+    private $directory;
 
-    public function __construct($data, $download = true, $eszamla = false) {
+    public function __construct($data, $username, $password, $directory, $download = true, $eszamla = false) {
         $this->data = $data;
         $this->eszamla = $eszamla;
         $this->download = $download;
+        $this->USERNAME = $username;
+        $this->PASSWORD = $password;
+        $this->directory = $directory;
     }
 
     public function createInvoice() {
@@ -35,6 +39,8 @@ class Szamlazz {
         if ($this->eszamla) {
             $beallitasok->addChild('eszamla', 'true');
             $beallitasok->addChild('kulcstartojelszo', $this->KEYPASSWORD);
+        } else {
+            $beallitasok->addChild('eszamla', 'false');
         }
 
         if ($this->download) {
@@ -43,7 +49,7 @@ class Szamlazz {
 
         $fejlec = $szamla->addChild('fejlec');
         $fejlec->addChild('keltDatum', date('Y-m-d') );
-        $fejlec->addChild('teljesitesDatum', date('Y-m-d', $this->data['teljesitesDatum']));
+        $fejlec->addChild('teljesitesDatum', $this->data['teljesitesDatum']);
         $fejlec->addChild('fizetesiHataridoDatum', date('Y-m-d', mktime(0, 0, 0, date("m")  , date("d")+7, date("Y"))));
         $fejlec->addChild('fizmod', $this->data['fizmod']);
         $fejlec->addChild('penznem', 'HUF');
@@ -56,7 +62,7 @@ class Szamlazz {
         $elado = $szamla->addChild('elado');
         $elado->addChild('bank', 'OTP Bank');
         $elado->addChild('bankszamlaszam', '11111111-22222222-11111111');
-        $elado->addChild('emailReplyto', 'E-mail');
+        $elado->addChild('emailReplyto', 'info@alompar.hu');
         $elado->addChild('emailTargy', 'E-mail tárgy');
         $elado->addChild('emailSzoveg', 'E-mail szöveg');
 
@@ -90,42 +96,54 @@ class Szamlazz {
 
         $date = date('Ym');
 
-        if (!file_exists('/data/szamlazz')) mkdir('/data/szamlazz', 0755, true);
-        if (!file_exists('/data/szamlazz/'.$date)) mkdir('/data/szamlazz/'.$date, 0755, true);
-        $file = fopen('/data/szamlazz/'.$date.'/'.$vendor['id'].'xml', 'w+');
+        if (!file_exists($this->directory.'/data/szamlazz')) mkdir($this->directory.'/data/szamlazz', 0755, true);
+        if (!file_exists($this->directory.'/data/szamlazz/'.$date)) mkdir($this->directory.'/data/szamlazz/'.$date, 0755, true);
+        $file = fopen($this->directory.'/data/szamlazz/'.$date.'/'.$this->data['rendelesSzam'].'.xml', 'w+');
         fwrite($file, $xml);
         fclose($file);
 
-        return $this->sendXML('/data/szamlazz/'.$date.'/'.$vendor['id'].'xml', $vendor['id'], $date);
+        return $this->sendXML($this->directory.'/data/szamlazz/'.$date.'/'.$this->data['rendelesSzam'].'.xml', $this->data['rendelesSzam'], $date);
     }
 
-    private function sendXML($xmlfile = 'invoice.xml', $vendor_id, $date){
+    private function sendXML($xmlfile = 'invoice.xml', $subscription_id, $date){
 
-        if (!file_exists('/data/szamlazz/'.$date.'/pdf')) mkdir('/data/szamlazz/'.$date.'/pdf', 0755, true);
+        if (!file_exists($this->directory.'/data/szamlazz/'.$date.'/pdf')) mkdir($this->directory.'/data/szamlazz/'.$date.'/pdf', 0755, true);
 
         $ch = curl_init("https://www.szamlazz.hu/szamla/");
-        $pdf = '/data/szamlazz/'.$date.'/pdf/'.$vendor_id.'.pdf';
+        $pdf = $this->directory.'/data/szamlazz/'.$date.'/pdf/'.$subscription_id.'.pdf';
+
+        $cookie_file = $this->directory.'/data/szamlazz/szamlazz_cookie.txt';
+        if (!file_exists($cookie_file)) {
+            $cookie = fopen($cookie_file, 'w');
+            fwrite($cookie, '');
+            fclose($cookie);
+        }
+
         $fp = fopen($pdf, "w");
         curl_setopt($ch, CURLOPT_FILE, $fp);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_POST, 1);
         curl_setopt($ch, CURLOPT_HEADER, 0);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, array('action-xmlagentxmlfile'=>'@'.$xmlfile));
+        curl_setopt($ch, CURLOPT_POSTFIELDS, array('action-xmlagentxmlfile'=> '@'.$xmlfile));
+        curl_setopt($ch, CURLOPT_COOKIEJAR, $cookie_file);
+        if (file_exists($cookie_file) && filesize($cookie_file) > 0) {
+            curl_setopt($ch, CURLOPT_COOKIEFILE, $cookie_file);
+        }
         curl_exec($ch);
         curl_close($ch);
         fclose($fp);
 
         if(mime_content_type($pdf) == 'text/plain'){
-            return false;
-            /*
-            Nem pdf típusú féjl érkezett vissza a válaszban. Ez általában hibát jelez. Az email tartalmazni fogja a szamlazz.hu rendszeréből visszaérkezett hibajelentést.
-            */
-            //mail("email@example.com", "Hiba a számla készítése során", convertBack("Hiba történt! ORDER ID: ".$orderid."\n".file_get_contents($pdf)));
+            $result = false;
         }else{
-            return true;
-            /*
-            A számla elkészült! Beállítjuk a rendelés számlázási státuszát 1-re, hogy nehogy mégegyszer kiszámlázásra kerüljön.
-            */
-            //mysql_query("UPDATE `jos_vm_orders` SET `invoiced` = 1 WHERE order_id = '".$orderid."'");
+            $result = true;
         }
+
+        $response = array(
+            'result' => $result,
+            'body' => $pdf
+        );
+
+        return $response;
     }
 }
