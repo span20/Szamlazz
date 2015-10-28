@@ -6,7 +6,7 @@
  * Time: 11:34
  */
 
-namespace Szamlazz\Szamlazz;
+namespace Span\Szamlazz;
 
 
 class Szamlazz {
