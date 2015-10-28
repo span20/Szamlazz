@@ -18,14 +18,16 @@ class Szamlazz {
     private $eszamla;
     private $download;
     private $directory;
+    private $send_email;
 
-    public function __construct($data, $username, $password, $directory, $download = true, $eszamla = false) {
+    public function __construct($data, $username, $password, $directory, $send_email = false, $download = true, $eszamla = false) {
         $this->data = $data;
         $this->eszamla = $eszamla;
         $this->download = $download;
         $this->USERNAME = $username;
         $this->PASSWORD = $password;
         $this->directory = $directory;
+        $this->send_email = $send_email;
     }
 
     public function createInvoice() {
@@ -74,7 +76,7 @@ class Szamlazz {
         $vevo->addChild('telepules', $vendor['city']);
         $vevo->addChild('cim', $vendor['address']);
         $vevo->addChild('email', $vendor['email']);
-        $vevo->addChild('sendEmail', true);
+        $vevo->addChild('sendEmail', $this->send_email);
         $vevo->addChild('adoszam', $vendor['adoszam']);
 
         $brutto = $vendor['price'];
