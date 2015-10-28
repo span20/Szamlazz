@@ -76,7 +76,11 @@ class Szamlazz {
         $vevo->addChild('telepules', $vendor['city']);
         $vevo->addChild('cim', $vendor['address']);
         $vevo->addChild('email', $vendor['email']);
-        $vevo->addChild('sendEmail', $this->send_email);
+        if ($this->send_email) {
+            $vevo->addChild('sendEmail', 'true');
+        } else {
+            $vevo->addChild('sendEmail', 'false');
+        }
         $vevo->addChild('adoszam', $vendor['adoszam']);
 
         $brutto = $vendor['price'];
