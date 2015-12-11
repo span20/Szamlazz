@@ -83,8 +83,8 @@ class Szamlazz {
         }
         $vevo->addChild('adoszam', $vendor['adoszam']);
 
-        $brutto = $vendor['price'];
-        $netto = round($brutto / 1.27);
+        $brutto = $vendor['price_br'];
+        $netto = $vendor['price_net'];
 
         $tetelek = $szamla->addChild('tetelek');
         $tetel = $tetelek->addChild('tetel');
